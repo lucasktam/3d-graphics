@@ -36,3 +36,21 @@ depth and stencil value - Asks: Is this fragment in front or behind something el
 
 *For many cases, you only have to work with the vertex and fragment shader.* 
 - but have to define a vertex and fragment shader of your own. 
+
+
+# Next
+OpenGL is a 3d graphics engine, so all coordinates have to be in 3d (x,y,z). 
+- OpenGL only processes normalized device coordinates (x,y,z have to be in between -1.0 and 1.0)
+
+define vertices in a simple float array like this, 
+```
+float vertices[] = {
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.0f
+};  
+```
+once the vertex data is defined, first have to allocate memory on the GPU where you store the vertex data, then configure how OpenGL should interpret the memory, and then specify how to send the data to the graphics card. 
+- Manage this memory using a vertex buffer object (VBO) that can store a large number of vertices in the GPU's memory. 
+- advantage of using this: send large batches of data all at once to the graphics card and keep it there if there's enough memory left (without sending data one vertex at a time)
+- cpu to graphics card = slow operation 
