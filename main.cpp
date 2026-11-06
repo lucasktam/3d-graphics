@@ -8,7 +8,8 @@ float vertices[] = {
     // positions         // colors
      0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
     -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
-     0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top 
+    0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,    // top 
+    -0.5f,  0.5f, 0.0f,   0.0f, 1.0f, 0.0f // top left 
 };    
 
 
@@ -53,7 +54,7 @@ int main(){
     // Load, compile and link the shaders from disk (paths are relative to the working directory)
     Shader ourShader("shader.vs", "shader.fs");
     ourShader.use();
-
+    
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);  
 
@@ -80,7 +81,11 @@ int main(){
         glClear(GL_COLOR_BUFFER_BIT);
 
         // draw our first triangle (program and VAO are already bound from setup)
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glm::mat4 trans = glm::mat4(1.0f);
+        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+        unsigned int transformLoc = glGetUniformLocation(ourShader.ID, "transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
         glfwSwapBuffers(window);
         glfwPollEvents();    
