@@ -2,7 +2,27 @@
 #include <iostream>
 #include "helpers.h"
 #include "shader.h"
+#include "camera.h"
 
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+  float lastX = 400.0f, lastY = 300.0f;   // window centre
+  bool firstMouse = true;
+
+  void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+  {
+      if (firstMouse) { lastX = xpos; lastY = ypos; firstMouse =
+  false; }  // avoids a jump on the first event
+      float xoffset = xpos - lastX;
+      float yoffset = lastY - ypos; 
+      lastX = xpos; lastY = ypos;
+      camera.ProcessMouseMovement(xoffset, yoffset);
+  }
+
+  void scroll_callback(GLFWwindow* window, double xoffset, double 
+  yoffset)
+  {
+      camera.ProcessMouseScroll((float)yoffset);
+  }
 
 glm::vec3 cubePositions[] = {
     glm::vec3( 0.0f,  0.0f,  0.0f), 
@@ -84,6 +104,9 @@ int main(){
     glfwMakeContextCurrent(window);
     // The moment a user resizes the window the viewport should be adjusted as well. 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback); 
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
 
     // Initialize GLAD
     if (!gladLoadGL(glfwGetProcAddress))
@@ -122,21 +145,6 @@ int main(){
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3* sizeof(float)));
     glEnableVertexAttribArray(1);
 
-
-
-    // the projection matrix
-    glm::mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-
-    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f); 
-    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
-
-
-
-
-    glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
     float deltaTime = 0.0f;	// Time between current frame and last frame
     float lastFrame = 0.0f; // Time of last frame
     // keep drawing images and handling user input until the program has been explicitly told to stop. 
@@ -144,54 +152,49 @@ int main(){
     {
         processInput(window);
        
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
         const float radius = 10.0f;
-        // float camX = sin(glfwGetTime()) * radius;
-        // float camZ = cos(glfwGetTime()) * radius;
-        // cameraPos = glm::vec3(camX, 0.0f, camZ);
-   
-        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+
         
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;  
-        float cameraSpeed = 2.5f * deltaTime;
+        camera.MovementSpeed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ? 7.0f : 2.5f;
 
-        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-            cameraSpeed = 7.0f * deltaTime;
-
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            cameraPos += cameraSpeed * cameraFront;
+         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            camera.ProcessKeyboard(FORWARD,  deltaTime);
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            cameraPos -= cameraSpeed * cameraFront;
+            camera.ProcessKeyboard(BACKWARD, deltaTime);
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+            camera.ProcessKeyboard(LEFT,     deltaTime);
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-
+            camera.ProcessKeyboard(RIGHT,    deltaTime);
+                // the class has no up/down, so move Position directly
+        float v = camera.MovementSpeed * deltaTime;
         if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-            cameraPos -= glm::normalize(cameraUp) * cameraSpeed;
+            camera.Position -= camera.WorldUp * v;
         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-            cameraPos += glm::normalize(cameraUp) * cameraSpeed;
-       
-  
+            camera.Position += camera.WorldUp * v;
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
-            cameraPos = glm::vec3(0.0f, 0.0f, 3.0f); 
+            camera.Position = glm::vec3(0.0f, 0.0f, 3.0f);
+        
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glm::mat4 view = camera.GetViewMatrix();
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
+        ourShader.setMat4("view", view);
+        ourShader.setMat4("projection", projection);
+
         for(unsigned int i = 0; i < 10; i++)
         {      
             
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i; 
-        
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-        
-            
-            ourShader.setMat4("model", model);
-            ourShader.setMat4("view", view);
-            ourShader.setMat4("projection", projection);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+           glm::mat4 model = glm::translate(glm::mat4(1.0f),
+  cubePositions[i]);
+          model = glm::rotate(model, glm::radians(20.0f * i),
+  glm::vec3(1.0f, 0.3f, 0.5f));
+          ourShader.setMat4("model", model);
+          glDrawArrays(GL_TRIANGLES, 0, 36);
         }
     
 
