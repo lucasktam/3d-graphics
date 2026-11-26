@@ -5,24 +5,22 @@
 #include "camera.h"
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-  float lastX = 400.0f, lastY = 300.0f;   // window centre
-  bool firstMouse = true;
+float lastX = 400.0f, lastY = 300.0f;   // window centre TODO: replace with variable
+bool firstMouse = true;
 
-  void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-  {
-      if (firstMouse) { lastX = xpos; lastY = ypos; firstMouse =
-  false; }  // avoids a jump on the first event
-      float xoffset = xpos - lastX;
-      float yoffset = lastY - ypos; 
-      lastX = xpos; lastY = ypos;
-      camera.ProcessMouseMovement(xoffset, yoffset);
-  }
+// callback function gets called every time the mouse moves
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    // avoids a jump on the first event - 
+    // on start, the mouse will jump towards where the mouse entered the screen from.
+    if (firstMouse) { lastX = xpos; lastY = ypos; firstMouse = false; }
 
-  void scroll_callback(GLFWwindow* window, double xoffset, double 
-  yoffset)
-  {
-      camera.ProcessMouseScroll((float)yoffset);
-  }
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // screen coordinates and pitch use opposite for y
+    lastX = xpos; lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
 
 glm::vec3 cubePositions[] = {
     glm::vec3( 0.0f,  0.0f,  0.0f), 
@@ -104,8 +102,9 @@ int main(){
     glfwMakeContextCurrent(window);
     // The moment a user resizes the window the viewport should be adjusted as well. 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback); 
+    // register the mouse callback function with GLFW.
     glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+    // Hide the cursor and lock it to the window.
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
 
     // Initialize GLAD
@@ -117,27 +116,33 @@ int main(){
 
     // Tell OpenGL the size of the rendering window before we start rendering. 
     glViewport(0, 0, 800, 600);
+    // Depth testing (determining which vertex is in front of another) is done automatically.
+    // must turn it on here.
     glEnable(GL_DEPTH_TEST);
-    
-    
 
-    unsigned int VBO;
-    glGenBuffers(1, &VBO);
-
-    // Load, compile and link the shaders from disk (paths are relative to the working directory)
+    // Load, compile and link the shaders from disk
     Shader ourShader("shader.vs", "shader.fs");
     ourShader.use();
     
+    // instantiate the vertex buffer object (VBO)
+    // VBO is a buffer that stores a large amount of vertices in memory
+    unsigned int VBO;
+    // write the unused buffer ID (1) into VBO.
+    // basically reserves the number 1 as used for VBO
+    glGenBuffers(1, &VBO);
+
+    // same thing here
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);  
 
-    // ..:: Initialization code (done once (unless your object frequently changes)) :: ..
-    // 1. bind Vertex Array Object
+    // 1. bind Vertex Array Object - makes this the curr VAO
     glBindVertexArray(VAO);
     // 2. copy our vertices array in a buffer for OpenGL to use
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO); // make this the curr VBO
+    // allocates GPU memory and copies vertices into it
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     // 3. then set our vertex attributes pointers
+    // this tells openGL how it should interpret the vertex data per vertex attribute.
     // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -151,11 +156,7 @@ int main(){
     while(!glfwWindowShouldClose(window))
     {
         processInput(window);
-       
-        
-        const float radius = 10.0f;
 
-        
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;  
@@ -169,7 +170,7 @@ int main(){
             camera.ProcessKeyboard(LEFT,     deltaTime);
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
             camera.ProcessKeyboard(RIGHT,    deltaTime);
-                // the class has no up/down, so move Position directly
+
         float v = camera.MovementSpeed * deltaTime;
         if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
             camera.Position -= camera.WorldUp * v;
@@ -182,25 +183,21 @@ int main(){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective((float)glm::radians(103.0), 800.0f / 600.0f, 0.1f, 100.0f);
         ourShader.setMat4("view", view);
         ourShader.setMat4("projection", projection);
 
         for(unsigned int i = 0; i < 10; i++)
         {      
-            
-           glm::mat4 model = glm::translate(glm::mat4(1.0f),
-  cubePositions[i]);
-          model = glm::rotate(model, glm::radians(20.0f * i),
-  glm::vec3(1.0f, 0.3f, 0.5f));
-          ourShader.setMat4("model", model);
-          glDrawArrays(GL_TRIANGLES, 0, 36);
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), cubePositions[i]);
+            model = glm::rotate(model, glm::radians(20.0f * i),
+            glm::vec3(1.0f, 0.3f, 0.5f));
+            ourShader.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
         }
-    
 
         glfwSwapBuffers(window);
-        glfwPollEvents();    
-
+        glfwPollEvents();
     }
 
     // Clean all resources allocated
